@@ -32,6 +32,10 @@ jobs:
         working-directory: workspaces/frontend
         run: npm run test
 
+      - name: Run lint
+        working-directory: workspaces/frontend
+        run: npm run test:fix
+
       - name: Check if there are uncommitted file changes
         working-directory: workspaces/frontend
         run: |
