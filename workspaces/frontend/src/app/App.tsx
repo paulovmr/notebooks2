@@ -20,7 +20,7 @@ import { NotebookContextProvider } from './context/NotebookContext';
 import { isMUITheme, Theme } from './const';
 
 const App: React.FC = () => {
-  React.useEffect(() => {
+    React.useEffect(() => {
     // Apply the theme based on the value of STYLE_THEME
     if (isMUITheme()) {
       document.documentElement.classList.add(Theme.MUI);
