@@ -34,6 +34,7 @@ import DeleteModal from '~/shared/components/DeleteModal';
 import { buildKindLogoDictionary } from '~/app/actions/WorkspaceKindsActions';
 import useWorkspaceKinds from '~/app/hooks/useWorkspaceKinds';
 import { WorkspaceConnectAction } from '~/app/pages/Workspaces/WorkspaceConnectAction';
+import { WorkspaceAggregatedDetails } from '~/app/pages/Workspaces/DetailsAggregated/WorkspaceAggregatedDetails';
 import Filter, { FilteredColumn } from 'shared/components/Filter';
 import { formatRam } from 'shared/utilities/WorkspaceResources';
 
@@ -170,7 +171,7 @@ export const Workspaces: React.FunctionComponent = () => {
     lastActivity: 'Last Activity',
   };
 
-  const filterableColumns: WorkspacesColumnNames = {
+  const filterableColumns = {
     name: 'Name',
     kind: 'Kind',
     image: 'Image',
@@ -387,22 +388,49 @@ export const Workspaces: React.FunctionComponent = () => {
     setPage(newPage);
   };
 
-  const workspaceDetailsContent = (
-    <>
-      {selectedWorkspace && (
-        <WorkspaceDetails
-          workspace={selectedWorkspace}
-          onCloseClick={() => selectWorkspace(null)}
-          onEditClick={() => editAction(selectedWorkspace)}
-          onDeleteClick={() => handleDeleteClick(selectedWorkspace)}
-        />
-      )}
-    </>
-  );
+  const [selectedWorkspaceNames, setSelectedWorkspaceNames] = React.useState<string[]>([]);
+  const setWorkspaceSelected = (workspace: Workspace, isSelecting = true) =>
+    setSelectedWorkspaceNames((prevSelected) => {
+      const otherSelectedWorkspaceNames = prevSelected.filter((w) => w !== workspace.name);
+      return isSelecting
+        ? [...otherSelectedWorkspaceNames, workspace.name]
+        : otherSelectedWorkspaceNames;
+    });
+  const selectAllWorkspaces = (isSelecting = true) =>
+    setSelectedWorkspaceNames(isSelecting ? sortedWorkspaces.map((r) => r.name) : []);
+  const areAllWorkspacesSelected = selectedWorkspaceNames.length === sortedWorkspaces.length;
+  const isWorkspaceSelected = (workspace: Workspace) =>
+    selectedWorkspaceNames.includes(workspace.name);
+
+  const workspaceDetailsContent = () => {
+    const selectedWorkspaceForDetails =
+      selectedWorkspaceNames.length === 1
+        ? sortedWorkspaces.find((w) => w.name === selectedWorkspaceNames[0])
+        : undefined;
+    return (
+      <>
+        {selectedWorkspaceForDetails && (
+          <WorkspaceDetails
+            workspace={selectedWorkspaceForDetails}
+            onCloseClick={() => selectAllWorkspaces(false)}
+            onEditClick={() => editAction(selectedWorkspaceForDetails)}
+            onDeleteClick={() => handleDeleteClick(selectedWorkspaceForDetails)}
+          />
+        )}
+        {selectedWorkspaceNames.length > 1 && (
+          <WorkspaceAggregatedDetails
+            workspaceNames={selectedWorkspaceNames}
+            onCloseClick={() => selectAllWorkspaces(false)}
+            onDeleteClick={() => console.log('Delete selected workspaces')}
+          />
+        )}
+      </>
+    );
+  };
 
   return (
-    <Drawer isInline isExpanded={selectedWorkspace != null}>
-      <DrawerContent panelContent={workspaceDetailsContent}>
+    <Drawer isInline isExpanded={selectedWorkspaceNames.length >= 1}>
+      <DrawerContent panelContent={workspaceDetailsContent()}>
         <DrawerContentBody>
           <PageSection isFilled>
             <Content>
@@ -420,6 +448,13 @@ export const Workspaces: React.FunctionComponent = () => {
               <Thead>
                 <Tr>
                   <Th />
+                  <Th
+                    select={{
+                      onSelect: (_event, isSelecting) => selectAllWorkspaces(isSelecting),
+                      isSelected: areAllWorkspacesSelected,
+                    }}
+                    aria-label="Row select"
+                  />
                   {Object.values(columnNames).map((columnName, index) => (
                     <Th key={`${columnName}-col-name`} sort={getSortParams(index)}>
                       {columnName}
@@ -442,6 +477,14 @@ export const Workspaces: React.FunctionComponent = () => {
                         isExpanded: isWorkspaceExpanded(workspace),
                         onToggle: () =>
                           setWorkspaceExpanded(workspace, !isWorkspaceExpanded(workspace)),
+                      }}
+                    />
+                    <Td
+                      select={{
+                        rowIndex,
+                        onSelect: (_event, isSelecting) =>
+                          setWorkspaceSelected(workspace, isSelecting),
+                        isSelected: isWorkspaceSelected(workspace),
                       }}
                     />
                     <Td dataLabel={columnNames.name}>{workspace.name}</Td>
@@ -491,7 +534,7 @@ export const Workspaces: React.FunctionComponent = () => {
                     </Td>
                   </Tr>
                   {isWorkspaceExpanded(workspace) && (
-                    <ExpandedWorkspaceRow workspace={workspace} columnNames={columnNames} />
+                    <ExpandedWorkspaceRow workspace={workspace} />
                   )}
                 </Tbody>
               ))}
